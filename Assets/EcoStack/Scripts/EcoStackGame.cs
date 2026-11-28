@@ -14,7 +14,7 @@ namespace EcoStack
         const string SaveKey = "EcoStack.Prototype.v1";
         readonly string[] species = { "Ajolote", "Tortuga marina", "Gorila de montaña", "Pangolín" };
         readonly int[] rates = { 10, 25, 60, 120 };
-        readonly Color[] colors = { new Color(1,.4f,.65f), new Color(.3f,.7f,.3f), new Color(.3f,.33f,.4f), new Color(.65f,.4f,.2f) };
+        readonly Color[] colors = { new Color(1f,.57f,.68f), new Color(.37f,.72f,.28f), new Color(.48f,.53f,.58f), new Color(.72f,.49f,.28f) };
         readonly List<Animal> animals = new List<Animal>();
         readonly List<Animal> stack = new List<Animal>();
         readonly List<Hazard> hazards = new List<Hazard>();
@@ -73,12 +73,14 @@ namespace EcoStack
         public void ApplyDefaultLighting()
         {
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(.34f,.4f,.48f);
-            RenderSettings.ambientEquatorColor = new Color(.18f,.23f,.28f);
-            RenderSettings.ambientGroundColor = new Color(.1f,.12f,.13f);
+            RenderSettings.ambientSkyColor = new Color(.62f,.76f,.88f);
+            RenderSettings.ambientEquatorColor = new Color(.46f,.58f,.66f);
+            RenderSettings.ambientGroundColor = new Color(.25f,.31f,.29f);
+            RenderSettings.ambientIntensity = 1.15f;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Exponential;
-            RenderSettings.fogDensity = .004f;
+            RenderSettings.fogColor = new Color(.35f,.5f,.58f);
+            RenderSettings.fogDensity = .0025f;
         }
 
         void Start()
@@ -89,6 +91,8 @@ namespace EcoStack
             domeMeshes.Clear();
             Load();
             BuildWorld();
+            RefreshAnimalModels();
+            ApplyDefaultLighting();
             audioSource = gameObject.AddComponent<AudioSource>();
             pickupSound = Tone(660, .09f);
             deliverySound = Tone(880, .22f);
@@ -99,6 +103,7 @@ namespace EcoStack
             if(!actorsPrepared) { CreateActorMarkers(); actorsPrepared=true; }
             ReadEditableActors();
             Physics.SyncTransforms();
+            BrightenExistingMaterials();
         }
 
         Material MakeMaterial(Color color)
@@ -147,57 +152,131 @@ namespace EcoStack
             Transform root = new GameObject(species[kind]).transform;
             root.SetParent(parent, false);
             root.localPosition = position;
-            Color color = colors[kind];
-            Shape("Cuerpo", PrimitiveType.Sphere, Vector3.zero, new Vector3(.85f,.5f,1), color, root);
-            Shape("Cabeza", PrimitiveType.Sphere, new Vector3(0,.12f,.55f), Vector3.one * .55f, color, root);
-            for (int side = -1; side <= 1; side += 2)
+            if(kind==2) root.localScale=Vector3.one*1.35f;
+            RefreshAnimalVisual(root,kind);
+            return root;
+        }
+
+        void RefreshAnimalModels()
+        {
+            Transform[] transforms=GetComponentsInChildren<Transform>(true);
+            for(int i=0;i<transforms.Length;i++)
+                for(int kind=0;kind<species.Length;kind++)
+                    if(transforms[i].name==species[kind])
+                    {
+                        RefreshAnimalVisual(transforms[i],kind);
+                        break;
+                    }
+        }
+
+        void RefreshAnimalVisual(Transform root,int kind)
+        {
+            for(int i=root.childCount-1;i>=0;i--)
             {
-                Shape("Ojo", PrimitiveType.Sphere, new Vector3(side*.17f,.23f,.77f), Vector3.one*.09f, Color.black, root);
-                Shape("Pata", PrimitiveType.Cube, new Vector3(side*.45f,-.15f,.1f), new Vector3(.35f,.15f,.5f), color, root);
-                if (kind == 0)
-                {
-                    for (int j = 0; j < 3; j++)
-                        Shape("Branquia", PrimitiveType.Cube, new Vector3(side*.42f,.15f+j*.13f,.48f-j*.1f), new Vector3(.38f,.07f,.07f), new Color(1,.2f,.45f), root);
-                }
+                GameObject oldPart=root.GetChild(i).gameObject;
+                if(Application.isPlaying) Destroy(oldPart);
+                else DestroyImmediate(oldPart);
             }
-            if (kind == 1 || kind == 3)
-                Shape("Caparazón", PrimitiveType.Sphere, new Vector3(0,.2f,-.1f), new Vector3(.9f,.5f,.9f), color * .65f, root);
-            if (kind == 0)
+            Color color=colors[kind];
+            Color light=Color.Lerp(color,Color.white,.3f);
+            Color dark=Color.Lerp(color,new Color(.12f,.16f,.1f),.42f);
+            if(kind==0)
             {
-                Transform tail=Shape("Cola",PrimitiveType.Capsule,new Vector3(0,0,-.72f),new Vector3(.22f,.48f,.17f),color,root);
-                tail.localRotation=Quaternion.Euler(70,0,0);
-            }
-            if (kind == 1)
-            {
-                for(int i=0;i<5;i++) Shape("Placa caparazón",PrimitiveType.Sphere,new Vector3(Mathf.Sin(i*1.25f)*.23f,.39f,Mathf.Cos(i*1.25f)*.23f-.1f),new Vector3(.3f,.1f,.3f),new Color(.35f,.4f,.15f),root);
-            }
-            if (kind == 2)
-            {
-                root.localScale = Vector3.one * 1.35f;
-                Shape("Pecho",PrimitiveType.Sphere,new Vector3(0,.23f,.05f),new Vector3(.8f,.85f,.65f),color,root);
+                Shape("Cuerpo",PrimitiveType.Sphere,Vector3.zero,new Vector3(.66f,.36f,.78f),color,root);
+                Shape("Vientre",PrimitiveType.Sphere,new Vector3(0,-.09f,.12f),new Vector3(.48f,.19f,.56f),light,root);
+                Shape("Cabeza",PrimitiveType.Sphere,new Vector3(0,.1f,.5f),new Vector3(.47f,.39f,.42f),color,root);
                 for(int side=-1;side<=1;side+=2)
                 {
-                    Shape("Brazo gorila",PrimitiveType.Capsule,new Vector3(side*.5f,.02f,.2f),new Vector3(.3f,.42f,.35f),color,root);
-                    Shape("Oreja",PrimitiveType.Sphere,new Vector3(side*.29f,.2f,.55f),Vector3.one*.17f,color,root);
-                }
-                Shape("Hocico",PrimitiveType.Sphere,new Vector3(0,.07f,.8f),new Vector3(.32f,.2f,.18f),color*.6f,root);
-            }
-            if (kind == 3)
-            {
-                for(int row=0;row<4;row++)
-                    for(int side=-1;side<=1;side++)
+                    Shape("Ojo",PrimitiveType.Sphere,new Vector3(side*.14f,.22f,.83f),new Vector3(.075f,.085f,.045f),new Color(.1f,.07f,.1f),root);
+                    Shape("Brillo del ojo",PrimitiveType.Sphere,new Vector3(side*.155f,.25f,.866f),Vector3.one*.025f,Color.white,root);
+                    for(int branch=0;branch<3;branch++)
                     {
-                        Transform plate=Shape("Escama",PrimitiveType.Cube,new Vector3(side*.22f,.38f-Mathf.Abs(side)*.08f,.25f-row*.22f),new Vector3(.3f,.12f,.3f),color*(.8f+row*.06f),root);
-                        plate.localRotation=Quaternion.Euler(15,0,side*25);
+                        Transform gill=Shape("Branquia plumosa",PrimitiveType.Capsule,new Vector3(side*(.34f+branch*.025f),.24f+branch*.07f,.43f-branch*.07f),new Vector3(.045f,.16f,.045f),new Color(1f,.35f,.49f),root);
+                        gill.localRotation=Quaternion.Euler(0,0,side*(48+branch*13));
                     }
+                    for(int foot=-1;foot<=1;foot+=2)
+                        Shape("Pata",PrimitiveType.Sphere,new Vector3(side*.42f,-.15f,foot*.34f),new Vector3(.13f,.11f,.2f),color,root);
+                }
+                Transform tail=Shape("Cola",PrimitiveType.Capsule,new Vector3(0,-.02f,-.72f),new Vector3(.14f,.4f,.14f),color,root);
+                tail.localRotation=Quaternion.Euler(90,0,0);
+                Shape("Aleta caudal",PrimitiveType.Sphere,new Vector3(0,0,-1.01f),new Vector3(.3f,.12f,.22f),light,root);
             }
-            return root;
+            else if(kind==1)
+            {
+                Shape("Cuerpo",PrimitiveType.Sphere,Vector3.zero,new Vector3(.62f,.27f,.72f),color,root);
+                Shape("Borde del caparazón",PrimitiveType.Sphere,new Vector3(0,.13f,-.06f),new Vector3(.61f,.14f,.66f),dark,root);
+                Shape("Caparazón",PrimitiveType.Sphere,new Vector3(0,.2f,-.06f),new Vector3(.56f,.34f,.6f),Color.Lerp(color,new Color(.18f,.39f,.16f),.35f),root);
+                for(int plate=0;plate<5;plate++)
+                {
+                    float angle=plate*Mathf.PI*2f/5f;
+                    Shape("Placa del caparazón",PrimitiveType.Sphere,new Vector3(Mathf.Sin(angle)*.25f,.43f,Mathf.Cos(angle)*.25f-.06f),new Vector3(.19f,.07f,.2f),light,root);
+                }
+                Shape("Cabeza",PrimitiveType.Sphere,new Vector3(0,.09f,.59f),new Vector3(.3f,.26f,.34f),light,root);
+                for(int side=-1;side<=1;side+=2)
+                {
+                    Shape("Ojo",PrimitiveType.Sphere,new Vector3(side*.1f,.18f,.86f),new Vector3(.045f,.05f,.03f),new Color(.08f,.07f,.04f),root);
+                    Transform flipper=Shape("Aleta",PrimitiveType.Capsule,new Vector3(side*.48f,-.06f,.34f),new Vector3(.13f,.12f,.27f),color,root);
+                    flipper.localRotation=Quaternion.Euler(side*12f,0,side*18f);
+                    Transform rearFlipper=Shape("Aleta trasera",PrimitiveType.Capsule,new Vector3(side*.43f,-.08f,-.39f),new Vector3(.12f,.1f,.22f),color,root);
+                    rearFlipper.localRotation=Quaternion.Euler(0,0,side*16f);
+                }
+            }
+            else if(kind==2)
+            {
+                Shape("Torso",PrimitiveType.Sphere,new Vector3(0,.03f,0),new Vector3(.57f,.55f,.52f),dark,root);
+                Shape("Pecho",PrimitiveType.Sphere,new Vector3(0,.04f,.35f),new Vector3(.42f,.39f,.22f),light,root);
+                Shape("Cabeza",PrimitiveType.Sphere,new Vector3(0,.49f,.28f),new Vector3(.39f,.38f,.38f),dark,root);
+                Shape("Cara",PrimitiveType.Sphere,new Vector3(0,.46f,.58f),new Vector3(.29f,.24f,.16f),new Color(.4f,.42f,.4f),root);
+                Shape("Hocico",PrimitiveType.Sphere,new Vector3(0,.34f,.69f),new Vector3(.18f,.13f,.11f),new Color(.27f,.29f,.28f),root);
+                Shape("Nariz",PrimitiveType.Sphere,new Vector3(0,.49f,.72f),new Vector3(.09f,.06f,.045f),new Color(.12f,.14f,.13f),root);
+                for(int side=-1;side<=1;side+=2)
+                {
+                    Shape("Oreja",PrimitiveType.Sphere,new Vector3(side*.38f,.49f,.28f),new Vector3(.13f,.16f,.12f),dark,root);
+                    Shape("Ojo",PrimitiveType.Sphere,new Vector3(side*.12f,.57f,.7f),new Vector3(.045f,.05f,.025f),new Color(.12f,.08f,.05f),root);
+                    Transform arm=Shape("Brazo",PrimitiveType.Capsule,new Vector3(side*.53f,-.02f,.06f),new Vector3(.2f,.38f,.2f),dark,root);
+                    arm.localRotation=Quaternion.Euler(0,0,-side*9f);
+                    Shape("Mano",PrimitiveType.Sphere,new Vector3(side*.64f,-.31f,.18f),new Vector3(.19f,.15f,.2f),dark,root);
+                    Shape("Pierna",PrimitiveType.Capsule,new Vector3(side*.22f,-.43f,.01f),new Vector3(.21f,.28f,.22f),dark,root);
+                    Shape("Pie",PrimitiveType.Sphere,new Vector3(side*.22f,-.66f,.12f),new Vector3(.22f,.13f,.3f),dark,root);
+                }
+            }
+            else
+            {
+                Shape("Cuerpo",PrimitiveType.Sphere,new Vector3(0,.02f,0),new Vector3(.58f,.35f,.76f),color,root);
+                Shape("Cabeza",PrimitiveType.Sphere,new Vector3(0,.1f,.59f),new Vector3(.28f,.24f,.34f),light,root);
+                Transform snout=Shape("Hocico alargado",PrimitiveType.Capsule,new Vector3(0,.02f,.83f),new Vector3(.085f,.3f,.085f),light,root);
+                snout.localRotation=Quaternion.Euler(90,0,0);
+                Shape("Nariz",PrimitiveType.Sphere,new Vector3(0,.02f,1.1f),new Vector3(.07f,.06f,.07f),dark,root);
+                for(int side=-1;side<=1;side+=2)
+                {
+                    Shape("Ojo",PrimitiveType.Sphere,new Vector3(side*.17f,.18f,.75f),new Vector3(.04f,.045f,.03f),new Color(.1f,.07f,.04f),root);
+                    for(int row=0;row<4;row++)
+                    {
+                        float z=.36f-row*.23f;
+                        float x=side*(.2f-row*.018f);
+                        Transform scale=Shape("Escama",PrimitiveType.Sphere,new Vector3(x,.3f-Mathf.Abs(side)*.015f,z),new Vector3(.17f,.085f,.16f),row%2==0?light:color,root);
+                        scale.localRotation=Quaternion.Euler(12,0,side*14f);
+                        Shape("Pata",PrimitiveType.Capsule,new Vector3(side*.39f,-.14f,z),new Vector3(.13f,.11f,.15f),dark,root);
+                    }
+                }
+                Transform tail=Shape("Cola",PrimitiveType.Capsule,new Vector3(0,-.02f,-.68f),new Vector3(.12f,.4f,.12f),dark,root);
+                tail.localRotation=Quaternion.Euler(90,0,0);
+            }
         }
 
         void BuildWorld()
         {
             if (environmentRoot == null) BuildEnvironment();
-            if(player!=null) return;
+            if(player!=null)
+            {
+                if(body==null)
+                {
+                    body=new GameObject("Modelo rescatista").transform;
+                    body.SetParent(player,false);
+                }
+                if(Application.isPlaying) RefreshCharacterVisual();
+                return;
+            }
             player = new GameObject("Rescatista").transform;
             player.SetParent(transform);
             player.position = new Vector3(0,.1f,5);
@@ -207,19 +286,7 @@ namespace EcoStack
             controller.center = Vector3.up*.9f;
             body = new GameObject("Modelo rescatista").transform;
             body.SetParent(player, false);
-            Shape("Traje", PrimitiveType.Capsule, new Vector3(0,.85f,0), new Vector3(.7f,.6f,.6f), new Color(.2f,.6f,.3f), body);
-            Shape("Cabeza", PrimitiveType.Sphere, new Vector3(0,1.65f,0), Vector3.one*.55f, new Color(.85f,.62f,.4f), body);
-            Shape("Mochila", PrimitiveType.Cube, new Vector3(0,1,-.35f), new Vector3(.6f,.7f,.3f), new Color(.3f,.35f,.15f), body);
-            for (int arm=-1;arm<=1;arm+=2)
-            {
-                Shape("Manga",PrimitiveType.Capsule,new Vector3(arm*.48f,1,0),new Vector3(.24f,.32f,.24f),new Color(.2f,.5f,.25f),body);
-                Shape("Guante",PrimitiveType.Sphere,new Vector3(arm*.48f,.65f,0),Vector3.one*.25f,new Color(.2f,.17f,.13f),body);
-                Shape("Ojo",PrimitiveType.Sphere,new Vector3(arm*.12f,1.7f,.25f),Vector3.one*.07f,Color.black,body);
-            }
-            Shape("Visera",PrimitiveType.Cube,new Vector3(0,1.9f,.3f),new Vector3(.55f,.08f,.35f),new Color(.2f,.5f,.1f),body);
-            Shape("Gorra", PrimitiveType.Cylinder, new Vector3(0,1.9f,0), new Vector3(.65f,.07f,.65f), new Color(.2f,.5f,.1f), body);
-            for (int s = -1; s <= 1; s += 2)
-                Shape("Bota", PrimitiveType.Cube, new Vector3(s*.22f,.15f,0), new Vector3(.25f,.3f,.45f), new Color(.2f,.15f,.1f), body);
+            RefreshCharacterVisual();
             Camera cam = new GameObject("EcoStack Camera").AddComponent<Camera>();
             cam.transform.SetParent(transform);
             cam.tag = "MainCamera";
@@ -249,6 +316,133 @@ namespace EcoStack
                 Transform hazard = BuildHazardModel(kind,home);
                 hazards.Add(new Hazard {kind=kind,home=home,view=hazard,phase=i});
             }
+        }
+
+        void RefreshCharacterVisual()
+        {
+            for(int i=body.childCount-1;i>=0;i--)
+            {
+                GameObject oldPart=body.GetChild(i).gameObject;
+                if(Application.isPlaying) Destroy(oldPart);
+                else DestroyImmediate(oldPart);
+            }
+            Color suit = new Color(.23f,.32f,.13f);
+            Color pants = new Color(.18f,.24f,.11f);
+            Color leather = new Color(.28f,.19f,.12f);
+            Color skin = new Color(.68f,.42f,.29f);
+            Color hair = new Color(.16f,.075f,.035f);
+            Color trim = new Color(.62f,.48f,.2f);
+            CreateOrganicTorso(suit);
+            Shape("Cadera del uniforme",PrimitiveType.Sphere,new Vector3(0,.58f,0),new Vector3(.48f,.32f,.34f),pants,body);
+            Shape("Cuello",PrimitiveType.Capsule,new Vector3(0,1.39f,0),new Vector3(.15f,.14f,.15f),skin,body);
+            Shape("Arnés izquierdo",PrimitiveType.Capsule,new Vector3(-.14f,1.08f,.17f),new Vector3(.045f,.25f,.035f),trim,body);
+            Shape("Arnés derecho",PrimitiveType.Capsule,new Vector3(.14f,1.08f,.17f),new Vector3(.045f,.25f,.035f),trim,body);
+            Shape("Bolsillo de pecho",PrimitiveType.Capsule,new Vector3(-.11f,.98f,.17f),new Vector3(.085f,.08f,.035f),new Color(.29f,.39f,.17f),body);
+            Shape("Insignia de hoja",PrimitiveType.Sphere,new Vector3(-.11f,.99f,.2f),new Vector3(.045f,.05f,.02f),new Color(.62f,.76f,.27f),body);
+            Shape("Cinturón",PrimitiveType.Capsule,new Vector3(0,.62f,0),new Vector3(.53f,.09f,.38f),leather,body);
+            Shape("Hebilla",PrimitiveType.Cylinder,new Vector3(0,.62f,.2f),new Vector3(.09f,.025f,.07f),trim,body);
+            Shape("Mochila de campo",PrimitiveType.Capsule,new Vector3(0,.99f,-.25f),new Vector3(.42f,.46f,.23f),new Color(.17f,.23f,.1f),body);
+            Transform bedroll=Shape("Manta enrollada",PrimitiveType.Cylinder,new Vector3(0,1.3f,-.39f),new Vector3(.13f,.4f,.13f),new Color(.39f,.29f,.16f),body);
+            bedroll.localRotation=Quaternion.Euler(0,0,90);
+            for(int side=-1;side<=1;side+=2)
+            {
+                Shape("Pierna",PrimitiveType.Capsule,new Vector3(side*.15f,.38f,0),new Vector3(.18f,.29f,.18f),pants,body);
+                Shape("Rodilla",PrimitiveType.Sphere,new Vector3(side*.15f,.25f,.02f),new Vector3(.17f,.16f,.17f),pants,body);
+                Shape("Pantorrilla",PrimitiveType.Capsule,new Vector3(side*.16f,.17f,.01f),new Vector3(.145f,.2f,.15f),pants,body);
+                Shape("Bota",PrimitiveType.Capsule,new Vector3(side*.16f,.11f,.07f),new Vector3(.23f,.15f,.34f),leather,body);
+                Shape("Hombro",PrimitiveType.Sphere,new Vector3(side*.34f,1.24f,0),new Vector3(.27f,.25f,.24f),suit,body);
+                Transform upperArm=Shape("Brazo",PrimitiveType.Capsule,new Vector3(side*.4f,1.01f,.01f),new Vector3(.17f,.27f,.17f),suit,body);
+                upperArm.localRotation=Quaternion.Euler(0,0,-side*7f);
+                Shape("Codo",PrimitiveType.Sphere,new Vector3(side*.43f,.77f,.02f),new Vector3(.155f,.155f,.155f),suit,body);
+                Transform forearm=Shape("Antebrazo",PrimitiveType.Capsule,new Vector3(side*.45f,.61f,.035f),new Vector3(.14f,.22f,.14f),new Color(.27f,.36f,.16f),body);
+                forearm.localRotation=Quaternion.Euler(0,0,-side*5f);
+                Shape("Guante",PrimitiveType.Sphere,new Vector3(side*.46f,.4f,.05f),new Vector3(.14f,.15f,.14f),leather,body);
+            }
+            Shape("Cabeza",PrimitiveType.Sphere,new Vector3(0,1.66f,.015f),new Vector3(.4f,.47f,.38f),skin,body);
+            Shape("Cabello",PrimitiveType.Sphere,new Vector3(0,1.76f,-.1f),new Vector3(.44f,.31f,.38f),hair,body);
+            Shape("Cola de cabello",PrimitiveType.Capsule,new Vector3(0,1.49f,-.33f),new Vector3(.15f,.26f,.15f),hair,body);
+            Shape("Gorra",PrimitiveType.Sphere,new Vector3(0,1.91f,0),new Vector3(.5f,.22f,.5f),new Color(.17f,.27f,.1f),body);
+            Shape("Visera de gorra",PrimitiveType.Capsule,new Vector3(0,1.84f,.19f),new Vector3(.42f,.055f,.26f),new Color(.17f,.27f,.1f),body);
+            Shape("Parche de gorra",PrimitiveType.Sphere,new Vector3(0,1.93f,.25f),new Vector3(.1f,.08f,.035f),new Color(.62f,.75f,.25f),body);
+            for(int side=-1;side<=1;side+=2)
+            {
+                Shape("Oreja",PrimitiveType.Sphere,new Vector3(side*.2f,1.64f,.01f),new Vector3(.075f,.11f,.07f),skin,body);
+                Shape("Ojo",PrimitiveType.Sphere,new Vector3(side*.095f,1.68f,.17f),new Vector3(.045f,.055f,.026f),new Color(.9f,.83f,.7f),body);
+                Shape("Pupila",PrimitiveType.Sphere,new Vector3(side*.095f,1.68f,.193f),new Vector3(.022f,.032f,.015f),new Color(.09f,.055f,.03f),body);
+                Transform brow=Shape("Ceja",PrimitiveType.Capsule,new Vector3(side*.095f,1.74f,.17f),new Vector3(.075f,.018f,.018f),hair,body);
+                brow.localRotation=Quaternion.Euler(0,0,side*8f);
+            }
+            Shape("Nariz",PrimitiveType.Sphere,new Vector3(0,1.59f,.19f),new Vector3(.045f,.06f,.045f),new Color(.62f,.36f,.25f),body);
+            Shape("Boca",PrimitiveType.Capsule,new Vector3(0,1.52f,.185f),new Vector3(.055f,.015f,.015f),new Color(.29f,.1f,.07f),body);
+        }
+
+        void CreateOrganicTorso(Color color)
+        {
+            Vector3[] profile =
+            {
+                new Vector3(.19f,.46f,.14f),
+                new Vector3(.24f,.54f,.16f),
+                new Vector3(.25f,.72f,.16f),
+                new Vector3(.27f,.96f,.17f),
+                new Vector3(.31f,1.16f,.18f),
+                new Vector3(.34f,1.28f,.18f),
+                new Vector3(.29f,1.36f,.15f),
+                new Vector3(.17f,1.41f,.12f)
+            };
+            const int segments=20;
+            int ringVertices=profile.Length*segments;
+            Vector3[] vertices=new Vector3[ringVertices+2];
+            int[] triangles=new int[(profile.Length-1)*segments*6+segments*6];
+            for(int ring=0;ring<profile.Length;ring++)
+                for(int segment=0;segment<segments;segment++)
+                {
+                    float angle=2f*Mathf.PI*segment/segments;
+                    vertices[ring*segments+segment]=new Vector3(
+                        profile[ring].x*Mathf.Cos(angle),
+                        profile[ring].y,
+                        profile[ring].z*Mathf.Sin(angle));
+                }
+            int triangle=0;
+            for(int ring=0;ring<profile.Length-1;ring++)
+                for(int segment=0;segment<segments;segment++)
+                {
+                    int next=(segment+1)%segments;
+                    int lower=ring*segments+segment;
+                    int lowerNext=ring*segments+next;
+                    int upper=(ring+1)*segments+segment;
+                    int upperNext=(ring+1)*segments+next;
+                    triangles[triangle++]=lower;
+                    triangles[triangle++]=upper;
+                    triangles[triangle++]=lowerNext;
+                    triangles[triangle++]=lowerNext;
+                    triangles[triangle++]=upper;
+                    triangles[triangle++]=upperNext;
+                }
+            int bottomCenter=ringVertices;
+            int topCenter=ringVertices+1;
+            vertices[bottomCenter]=new Vector3(0,profile[0].y,0);
+            vertices[topCenter]=new Vector3(0,profile[profile.Length-1].y,0);
+            int topRing=(profile.Length-1)*segments;
+            for(int segment=0;segment<segments;segment++)
+            {
+                int next=(segment+1)%segments;
+                triangles[triangle++]=bottomCenter;
+                triangles[triangle++]=segment;
+                triangles[triangle++]=next;
+                triangles[triangle++]=topCenter;
+                triangles[triangle++]=topRing+next;
+                triangles[triangle++]=topRing+segment;
+            }
+            Mesh mesh=new Mesh();
+            mesh.name="Malla orgánica del torso";
+            mesh.vertices=vertices;
+            mesh.triangles=triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            GameObject torso=new GameObject("Torso anatómico");
+            torso.transform.SetParent(body,false);
+            torso.AddComponent<MeshFilter>().sharedMesh=mesh;
+            torso.AddComponent<MeshRenderer>().sharedMaterial=MakeMaterial(color);
         }
 
         Vector2 Movement(out bool jump, out bool pause)
@@ -370,8 +564,38 @@ namespace EcoStack
             Camera camera = cameraTransform.GetComponent<Camera>();
             RenderSettings.fogColor = camera.backgroundColor;
             camera.backgroundColor = Color.Lerp(camera.backgroundColor,
-                InSanctuary ? new Color(.48f,.77f,.86f) : new Color(.07f,.10f,.13f), Time.deltaTime*2);
+                InSanctuary ? new Color(.62f,.84f,.9f) : new Color(.2f,.31f,.4f), Time.deltaTime*2);
 
+        }
+
+        void BrightenExistingMaterials()
+        {
+            Renderer[] renderers=GetComponentsInChildren<Renderer>(true);
+            MaterialPropertyBlock block=new MaterialPropertyBlock();
+            Color lift=new Color(.9f,.93f,.98f,1);
+            foreach(Renderer renderer in renderers)
+            {
+                Material[] sharedMaterials=renderer.sharedMaterials;
+                for(int index=0;index<sharedMaterials.Length;index++)
+                {
+                    Material material=sharedMaterials[index];
+                    if(material==null) continue;
+                    renderer.GetPropertyBlock(block,index);
+                    bool changed=false;
+                    if(material.HasProperty("_BaseColor"))
+                    {
+                        block.SetColor("_BaseColor",Color.Lerp(material.GetColor("_BaseColor"),lift,.2f));
+                        changed=true;
+                    }
+                    if(material.HasProperty("_Color"))
+                    {
+                        block.SetColor("_Color",Color.Lerp(material.GetColor("_Color"),lift,.2f));
+                        changed=true;
+                    }
+                    if(changed) renderer.SetPropertyBlock(block,index);
+                    block.Clear();
+                }
+            }
         }
 
         void Hit() { TakeDamage(25,"Caída"); }

@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "unity": {
+      "type": "stdio",
+      "command": "cmd.exe",
+      "args": [
+        "/d",
+        "/c",
+        "npx.cmd",
+        "--yes",
+        "--registry=https://registry.yarnpkg.com",
+        "anklebreaker-unity-mcp@2.36.0"
+      ],
+      "tools": ["*"]
+    }
+  }
+}

@@ -4,10 +4,10 @@ namespace EcoStack
 {
     public partial class EcoStackGame
     {
-        readonly Color steel = new Color(.19f,.24f,.27f);
-        readonly Color rust = new Color(.56f,.25f,.10f);
-        readonly Color brass = new Color(.91f,.58f,.14f);
-        readonly Color foliage = new Color(.22f,.53f,.12f);
+        readonly Color steel = new Color(.34f,.43f,.48f);
+        readonly Color rust = new Color(.72f,.36f,.18f);
+        readonly Color brass = new Color(.98f,.7f,.24f);
+        readonly Color foliage = new Color(.32f,.65f,.2f);
 
         Transform Block(string name, Vector3 position, Vector3 size, Color color, bool solid=false)
         {
@@ -86,7 +86,7 @@ namespace EcoStack
         {
             environmentRoot = new GameObject("Entorno editable").transform;
             environmentRoot.SetParent(transform, false);
-            RenderSettings.ambientLight=new Color(.65f,.72f,.75f);
+            RenderSettings.ambientLight=new Color(.82f,.88f,.92f);
             RenderSettings.fog=false;
             Light sun=new GameObject("Luz del mundo").AddComponent<Light>();
             sun.transform.SetParent(environmentRoot);
@@ -99,14 +99,14 @@ namespace EcoStack
 
             // Continuous walkable collision surface. All decorative floor plates have no collider.
             Block("Terreno fábrica 40 x 184",new Vector3(0,-.5f,88),new Vector3(40,1,184),steel,true);
-            Block("Terreno santuario 40 x 64",new Vector3(0,-.5f,212),new Vector3(40,1,64),new Color(.28f,.45f,.20f),true);
+            Block("Terreno santuario 40 x 64",new Vector3(0,-.5f,212),new Vector3(40,1,64),new Color(.38f,.56f,.28f),true);
             Block("Muro de entrada",new Vector3(0,6,-4),new Vector3(40,12,.5f),steel,true);
             Block("Muro final",new Vector3(0,3,244),new Vector3(40,6,.5f),foliage,true);
             for(int z=0;z<180;z+=4)
             {
                 for(int x=-16;x<=16;x+=4)
                 {
-                    Color plate=((x/4+z/4)%2==0) ? new Color(.26f,.29f,.29f) : new Color(.34f,.31f,.26f);
+                    Color plate=((x/4+z/4)%2==0) ? new Color(.38f,.43f,.45f) : new Color(.45f,.4f,.34f);
                     Block("Placa metálica",new Vector3(x,.015f,z),new Vector3(3.92f,.03f,3.92f),plate);
                 }
                 // Narrow crossbars form a grated central walkway.
@@ -162,7 +162,7 @@ namespace EcoStack
             // Broad stone paths and visible collection circles around the four habitats.
             for(int z=182;z<244;z+=3)
                 for(int x=-3;x<=3;x+=3)
-                    Block("Baldosa de piedra",new Vector3(x,.04f,z),new Vector3(2.9f,.08f,2.9f),new Color(.65f,.64f,.51f));
+                    Block("Baldosa de piedra",new Vector3(x,.04f,z),new Vector3(2.9f,.08f,2.9f),new Color(.78f,.76f,.64f));
             for(int k=0;k<4;k++)
             {
                 Vector3 center=pads[k];
